@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EXIF Data Viewer and Remover</title>
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f3f4f6;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 6px;
+            padding: 20px;
+            background: #fafafa;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #888;
+        }
+        .upload-area.dragover {
+            border-color: #333;
+            background: #f0f0f0;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+            text-align: left;
+            margin-top: 20px;
+            border-radius: 6px;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        button {
+            background: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>EXIF Data Viewer and Remover</h1>
+        <div id="uploadArea" class="upload-area">
+            Drag and drop an image here, or click to select a file
+        </div>
+        <div id="exifDataContainer"></div>
+        <img id="uploadedImage" alt="" style="display: none;">
+        <div class="buttons" id="downloadContainer" style="display: none;">
+            <button id="downloadButton">Download Image Without EXIF</button>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const exifDataContainer = document.getElementById('exifDataContainer');
+        const uploadedImage = document.getElementById('uploadedImage');
+        const downloadContainer = document.getElementById('downloadContainer');
+        const downloadButton = document.getElementById('downloadButton');
+
+        uploadArea.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.addEventListener('change', () => handleFile(input.files[0]));
+            input.click();
+        });
+
+        uploadArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = event.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        async function handleFile(file) {
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const imageData = event.target.result;
+                
+                // Display image
+                uploadedImage.src = imageData;
+                uploadedImage.style.display = 'block';
+
+                // Read EXIF data
+                EXIF.getData(file, function () {
+                    const exifData = EXIF.pretty(this);
+                    exifDataContainer.innerHTML = `<h2>EXIF Data:</h2><pre>${exifData || 'No EXIF data found'}</pre>`;
+                });
+
+                // Remove EXIF data
+                removeExif(imageData);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeExif(dataUrl) {
+            const img = new Image();
+            img.src = dataUrl;
+
+            img.onload = function () {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, img.width, img.height);
+
+                const imageWithoutExif = canvas.toDataURL('image/jpeg');
+                downloadContainer.style.display = 'block';
+
+                downloadButton.onclick = function () {
+                    const link = document.createElement('a');
+                    link.href = imageWithoutExif;
+                    link.download = 'image-without-exif.jpg';
+                    link.click();
+                };
+            };
+        }
+    </script>
+</body>
+</html>
+
